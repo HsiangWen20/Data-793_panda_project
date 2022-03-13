@@ -1,0 +1,820 @@
+---
+title: "panda project"
+author: "Hsiang-Yu Wen"
+date: "2/6/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Install packages
+```{r}
+library(tidyverse)
+library(readxl)
+library(hormLong)
+library(janitor)
+library(lubridate)
+```
+
+
+## import data
+```{r}
+panda2013 <- read_excel("GP compiled with Oxy_Rlxn.xlsx", sheet = 1)
+```
+
+# rename the variables
+```{r}
+panda2013 %>%
+  rename(Date = ...1) %>%
+  rename("Day from AI" = ...2) %>%
+  rename(USpG = ...3) %>%
+  rename("Creatinine: CRT(mg/mL)" = Creatinine) %>%
+  rename("Creatinine: CRT dilution" = ...5) %>%
+  rename("Creatinine: crt(mg/mL)" = ...6) %>%
+  rename("Progestagens: Pg (pg/well)" = Progestagens) %>%
+  rename("Progestagens: dilution" = ...8) %>%
+  rename("Progestagens: Pg (pg/mL)" = ...9) %>%
+  rename("Urinary progestagens (ng/mg Cr)" = ...10) %>%
+  rename("Urinary progestagens (ng/mL UspG)" = ...11) %>%
+  rename("Estrogens: E1S (pg/well)" = Estrogens) %>%
+  rename("Estrogens: Dilution" = ...13) %>%
+  rename("Estrogens: E1S (pg/mL)" = ...14) %>%
+  rename("Urinary estrogens (ng/mg Cr)" = ...15) %>%
+  rename("urinary estrogens (ng/mL UspG)" = ...16) %>%
+  rename("Oxytocin: pg/mL" = Oxytocin) %>%
+  rename("Oxytocin: Dilution" = ...18) %>%
+  rename("Oxytocin: pg/mg Crt" = ...19) %>% 
+  rename("Oxytocin: ng/mg Crt" = ...20) %>%
+  rename("Oxytocin: ng/mL UspG" = ...21) %>%
+  rename("Relaxin: pg/ml" = Relaxin) %>%
+  rename("Relaxin: dilution" = ...23) %>%
+  rename("Relaxin: pg/mg Crt" = ...24) %>%
+  rename("Relaxin: ng/mg Crt" = ...25) %>%
+  rename("Relaxin: ng/mL UspG" = ...26) -> panda2013
+head(panda2013)
+```
+
+```{r}
+panda2013 %>%
+  select(-c(27:28)) %>%
+  filter(!row_number() %in% c(1, 200:205)) -> panda2013
+```
+
+```{r}
+panda2013 %>%
+  mutate(Date = as.numeric(Date)) %>%
+  mutate(Date = excel_numeric_to_date(date_num = Date, include_time = FALSE)) %>%
+  mutate(`Day from AI` = round(as.numeric(`Day from AI`), digits = 0)) %>%
+  mutate(USpG = round(as.numeric(USpG), digits = 4)) %>%
+  mutate(`Creatinine: CRT(mg/mL)` = round(as.numeric(`Creatinine: CRT(mg/mL)`), digits = 3)) %>%
+  mutate(`Creatinine: crt(mg/mL)` = round(as.numeric(`Creatinine: crt(mg/mL)`), digits = 3)) %>%
+  mutate(`Progestagens: Pg (pg/well)` = round(as.numeric(`Progestagens: Pg (pg/well)`), digits = 3)) %>%
+  mutate(`Progestagens: dilution` = round(as.numeric(`Progestagens: dilution`), digits = 0)) %>%
+  mutate(`Progestagens: Pg (pg/mL)` = round(as.numeric(`Progestagens: Pg (pg/mL)`), digits = 1)) %>%
+  mutate(`Urinary progestagens (ng/mg Cr)` = round(as.numeric(`Urinary progestagens (ng/mg Cr)`), digits = 2)) %>%
+  mutate(`Urinary progestagens (ng/mL UspG)` = round(as.numeric(`Urinary progestagens (ng/mL UspG)`), digits = 2)) %>%
+  mutate(`Estrogens: E1S (pg/well)` = round(as.numeric(`Estrogens: E1S (pg/well)`), digits = 2)) %>%
+  mutate(`Estrogens: Dilution` = round(as.numeric(`Estrogens: Dilution`), digits = 0)) %>%
+  mutate(`Estrogens: E1S (pg/mL)` = round(as.numeric(`Estrogens: E1S (pg/mL)`), digits = 1)) %>%
+  mutate(`Urinary estrogens (ng/mg Cr)` = round(as.numeric(`Urinary estrogens (ng/mg Cr)`), digits = 2)) %>%
+  mutate(`urinary estrogens (ng/mL UspG)` = round(as.numeric(`urinary estrogens (ng/mL UspG)`), digits = 2)) %>%
+  mutate(`Oxytocin: pg/mL` = round(as.numeric(`Oxytocin: pg/mL`), digits = 4)) %>% 
+  mutate(`Oxytocin: Dilution` = round(as.numeric(`Oxytocin: Dilution`), digits = 0)) %>%
+  mutate(`Oxytocin: pg/mg Crt` = round(as.numeric(`Oxytocin: pg/mg Crt`), digits = 4)) %>% 
+  mutate(`Oxytocin: ng/mg Crt` = round(as.numeric(`Oxytocin: ng/mg Crt`), digits = 4)) %>%
+  mutate(`Oxytocin: ng/mL UspG` = round(as.numeric(`Oxytocin: ng/mL UspG`), digits = 4)) %>%
+  mutate(`Relaxin: pg/ml` = round(as.numeric(`Relaxin: pg/ml`), digits = 4)) %>%
+  mutate(`Relaxin: dilution` = round(as.numeric(`Relaxin: dilution`), digits = 0)) %>%
+  mutate(`Relaxin: pg/mg Crt` = round(as.numeric(`Relaxin: pg/mg Crt`), digits = 4)) %>%
+  mutate(`Relaxin: ng/mg Crt` = round(as.numeric(`Relaxin: ng/mg Crt`), digits = 4)) %>%
+  mutate(`Relaxin: ng/mL UspG` = round(as.numeric(`Relaxin: ng/mL UspG`), digits = 4)) -> panda2013
+
+ 
+```
+
+## create a funciton to rename every variable
+```{r}
+rename_panda <- function(df){
+  df %>%
+    rename(Date = ...1) %>%
+  rename("Day from AI" = ...2) %>%
+  rename(USpG = ...3) %>%
+  rename("Creatinine: CRT(mg/mL)" = Creatinine) %>%
+  rename("Creatinine: CRT dilution" = ...5) %>%
+  rename("Creatinine: crt(mg/mL)" = ...6) %>%
+  rename("Progestagens: Pg (pg/well)" = Progestagens) %>%
+  rename("Progestagens: dilution" = ...8) %>%
+  rename("Progestagens: Pg (pg/mL)" = ...9) %>%
+  rename("Urinary progestagens (ng/mg Cr)" = ...10) %>%
+  rename("Urinary progestagens (ng/mL UspG)" = ...11) %>%
+  rename("Estrogens: E1S (pg/well)" = Estrogens) %>%
+  rename("Estrogens: Dilution" = ...13) %>%
+  rename("Estrogens: E1S (pg/mL)" = ...14) %>%
+  rename("Urinary estrogens (ng/mg Cr)" = ...15) %>%
+  rename("urinary estrogens (ng/mL UspG)" = ...16) %>%
+  rename("Oxytocin: pg/mL" = Oxytocin) %>%
+  rename("Oxytocin: Dilution" = ...18) %>%
+  rename("Oxytocin: pg/mg Crt" = ...19) %>% 
+  rename("Oxytocin: ng/mg Crt" = ...20) %>%
+  rename("Oxytocin: ng/mL UspG" = ...21) %>%
+  rename("Relaxin: pg/ml" = Relaxin) %>%
+  rename("Relaxin: dilution" = ...23) %>%
+  rename("Relaxin: pg/mg Crt" = ...24) %>%
+  rename("Relaxin: ng/mg Crt" = ...25) %>%
+  rename("Relaxin: ng/mL UspG" = ...26) -> rename_panda
+  return(rename_panda)
+    
+    
+}
+```
+
+
+## create a function to tidy the data frame
+```{r}
+tidy_panda <- function(df){
+  df %>%
+  mutate(Date = as.numeric(Date)) %>%
+  mutate(Date = excel_numeric_to_date(date_num = Date, include_time = TRUE)) %>%
+  mutate(`Day from AI` = round(as.numeric(`Day from AI`), digits = 0)) %>%
+  mutate(USpG = round(as.numeric(USpG), digits = 4)) %>%
+  mutate(`Creatinine: CRT(mg/mL)` = round(as.numeric(`Creatinine: CRT(mg/mL)`), digits = 3)) %>%
+  mutate(`Creatinine: crt(mg/mL)` = round(as.numeric(`Creatinine: crt(mg/mL)`), digits = 3)) %>%
+  mutate(`Progestagens: Pg (pg/well)` = round(as.numeric(`Progestagens: Pg (pg/well)`), digits = 3)) %>%
+  mutate(`Progestagens: dilution` = round(as.numeric(`Progestagens: dilution`), digits = 0)) %>%
+  mutate(`Progestagens: Pg (pg/mL)` = round(as.numeric(`Progestagens: Pg (pg/mL)`), digits = 1)) %>%
+  mutate(`Urinary progestagens (ng/mg Cr)` = round(as.numeric(`Urinary progestagens (ng/mg Cr)`), digits = 2)) %>%
+  mutate(`Urinary progestagens (ng/mL UspG)` = round(as.numeric(`Urinary progestagens (ng/mL UspG)`), digits = 2)) %>%
+  mutate(`Estrogens: E1S (pg/well)` = round(as.numeric(`Estrogens: E1S (pg/well)`), digits = 2)) %>%
+  mutate(`Estrogens: Dilution` = round(as.numeric(`Estrogens: Dilution`), digits = 0)) %>%
+  mutate(`Estrogens: E1S (pg/mL)` = round(as.numeric(`Estrogens: E1S (pg/mL)`), digits = 1)) %>%
+  mutate(`Urinary estrogens (ng/mg Cr)` = round(as.numeric(`Urinary estrogens (ng/mg Cr)`), digits = 2)) %>%
+  mutate(`urinary estrogens (ng/mL UspG)` = round(as.numeric(`urinary estrogens (ng/mL UspG)`), digits = 2)) %>%
+  mutate(`Oxytocin: pg/mL` = round(as.numeric(`Oxytocin: pg/mL`), digits = 4)) %>% 
+  mutate(`Oxytocin: Dilution` = round(as.numeric(`Oxytocin: Dilution`), digits = 0)) %>%
+  mutate(`Oxytocin: pg/mg Crt` = round(as.numeric(`Oxytocin: pg/mg Crt`), digits = 4)) %>% 
+  mutate(`Oxytocin: ng/mg Crt` = round(as.numeric(`Oxytocin: ng/mg Crt`), digits = 4)) %>%
+  mutate(`Oxytocin: ng/mL UspG` = round(as.numeric(`Oxytocin: ng/mL UspG`), digits = 4)) %>%
+  mutate(`Relaxin: pg/ml` = round(as.numeric(`Relaxin: pg/ml`), digits = 4)) %>%
+  mutate(`Relaxin: dilution` = round(as.numeric(`Relaxin: dilution`), digits = 0)) %>%
+  mutate(`Relaxin: pg/mg Crt` = round(as.numeric(`Relaxin: pg/mg Crt`), digits = 4)) %>%
+  mutate(`Relaxin: ng/mg Crt` = round(as.numeric(`Relaxin: ng/mg Crt`), digits = 4)) %>%
+  mutate(`Relaxin: ng/mL UspG` = round(as.numeric(`Relaxin: ng/mL UspG`), digits = 4)) -> tidy_panda
+  return(tidy_panda)
+}
+```
+
+
+
+## Import datasets
+```{r}
+panda2015 <- read_excel("GP compiled with Oxy_Rlxn.xlsx", sheet = 2)
+panda2018 <- read_excel("GP compiled with Oxy_Rlxn.xlsx", sheet = 3)
+panda2019 <- read_excel("GP compiled with Oxy_Rlxn.xlsx", sheet = 4)
+panda2020 <- read_excel("GP compiled with Oxy_Rlxn.xlsx", sheet = 5)
+```
+
+## Rename the variables
+```{r}
+panda2015 <- rename_panda(panda2015)
+panda2018 <- rename_panda(panda2018)
+panda2019 <- rename_panda(panda2019)
+panda2020 <- rename_panda(panda2020)
+```
+
+## Remove rows and blank variables
+```{r}
+panda2015 %>%
+  select(-c(27:71)) %>%
+  filter(!row_number() %in% c(1, 171:175)) -> panda2015
+```
+
+```{r}
+panda2018 %>%
+  select(-c(27:32)) %>%
+  filter(!row_number() %in% c(1, 192:195)) -> panda2018
+```
+
+```{r}
+panda2019 %>%
+  select(-c(27:33)) %>%
+  filter(!row_number() %in% c(1, 217:221)) -> panda2019
+```
+
+```{r}
+panda2020 %>%
+  select(-c(27:33)) %>%
+  filter(!row_number() %in% c(1, 199:202)) -> panda2020
+```
+
+
+
+## Tidy every datasets
+```{r}
+panda2015 <- tidy_panda(panda2015)
+panda2018 <- tidy_panda(panda2018)
+panda2019 <- tidy_panda(panda2019)
+panda2020 <- tidy_panda(panda2020)
+```
+
+## Combine every datasets
+```{r}
+all.Panda <- do.call("rbind", list(panda2013, panda2015, panda2018, panda2019, panda2020))
+all.Panda
+```
+
+```{r}
+all.Panda %>%
+  drop_na(USpG, `Creatinine: CRT(mg/mL)`, `Creatinine: crt(mg/mL)`, `Urinary progestagens (ng/mg Cr)`, 
+          `Urinary progestagens (ng/mL UspG)`, `urinary estrogens (ng/mL UspG)`, `Urinary estrogens (ng/mg Cr)`) -> all.Panda
+all.Panda
+```
+
+
+```{r}
+panda2013 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) -> newdf
+
+ggplot(newdf, aes(x = Date, y = Conc_ngg)) +
+  geom_line(aes(color = Hormone)) +
+  geom_smooth(method = "lm") +
+```
+
+```{r}
+panda2013 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(`Creatinine: crt(mg/mL)`) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) -> estro
+
+
+ggplot(estro, aes(x = Date, y = `Creatinine: crt(mg/mL)`)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2013-03-18"), xend = as.Date("2013-06-30"), y = 0, yend = 0, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2013-07-10"), xend = as.Date("2013-08-23"), y = 0, yend = 0, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2013 Creatinine vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2013-03-28"), xend = as.Date("2013-03-28"), y = 0, yend = 4, colour = "black", size=0.4, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2013-03-28"), y = 4.5, label = "Date of peak(Estrogen)") +
+  theme_bw()
+
+```
+
+```{r}
+panda2013 %>%
+  select(Date, 'Day from AI', USpG) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(USpG) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) -> USPG_2013
+
+
+ggplot(USPG_2013, aes(x = Date, y = USpG)) +
+  geom_line(color = "pink") +
+  annotate("segment", x = as.Date("2013-03-18"), xend = as.Date("2013-06-30"), y = 1, yend = 1, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2013-07-10"), xend = as.Date("2013-08-23"), y = 1, yend = 1, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2013 USpG vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2013-03-28"), xend = as.Date("2013-03-28"), y = 1.014, yend = 1.0175, colour = "black", size=1, alpha=0.6, arrow = arrow()) +
+  annotate("text", x = as.Date("2013-03-28"), y = 1.018, label = "Date of peak(Estrogen)") +
+  theme_bw()
+
+```
+
+```{r}
+panda2015 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(`Creatinine: crt(mg/mL)`) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> crt_est2015
+
+
+ggplot(crt_est2015, aes(x = Date, y = `Creatinine: crt(mg/mL)`)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2015-04-19"), xend = as.Date("2015-07-06"), y = 0, yend = 0, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2015-07-13"), xend = as.Date("2015-08-22"), y = 0, yend = 0, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2015 Creatinine vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2015-04-26"), xend = as.Date("2015-04-26"), y = 2.25, yend = 2.75, colour = "black", size=1, alpha=0.6, arrow = arrow()) +
+  annotate("text", x = as.Date("2015-04-26"), y = 3, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2015 %>%
+  select(Date, 'Day from AI', USpG) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(USpG) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> USPG_2015
+
+
+ggplot(USPG_2015, aes(x = Date, y = USpG)) +
+  geom_line(color = "pink") +
+  annotate("segment", x = as.Date("2015-04-19"), xend = as.Date("2015-07-06"), y = 1, yend = 1, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2015-07-13"), xend = as.Date("2015-08-22"), y = 1, yend = 1, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2015 USpG vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2015-04-26"), xend = as.Date("2015-04-26"), y = 1.014, yend = 1.0175, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2015-04-26"), y = 1.02, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2018 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(`Creatinine: crt(mg/mL)`) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> crt_est2018
+
+
+ggplot(crt_est2018, aes(x = Date, y = `Creatinine: crt(mg/mL)`)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2018-02-17"), xend = as.Date("2018-04-25"), y = 0, yend = 0, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2018-05-02"), xend = as.Date("2018-07-01"), y = 0, yend = 0, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2018 Creatinine vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2018-02-28"), xend = as.Date("2018-02-28"), y = 1.5, yend = 1.75, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2018-02-28"), y = 1.8, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2018 %>%
+  select(Date, 'Day from AI', USpG) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(USpG) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> USPG_2018
+
+
+ggplot(USPG_2018, aes(x = Date, y = USpG)) +
+  geom_line(color = "pink") +
+  annotate("segment", x = as.Date("2018-02-17"), xend = as.Date("2018-04-25"), y = 1, yend = 1, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2018-05-02"), xend = as.Date("2018-07-01"), y = 1, yend = 1, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2018 USpG vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2018-02-28"), xend = as.Date("2018-02-28"), y = 1.014, yend = 1.0175, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2018-02-28"), y = 1.019, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2019 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(`Creatinine: crt(mg/mL)`) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> crt_est2019
+
+
+ggplot(crt_est2019, aes(x = Date, y = `Creatinine: crt(mg/mL)`)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2019-03-15"), xend = as.Date("2019-06-12"), y = 0, yend = 0, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2019-06-25"), xend = as.Date("2019-09-01"), y = 0, yend = 0, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2019 Creatinine vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2019-03-27"), xend = as.Date("2019-03-27"), y = 1.6, yend = 1.8, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2019-03-27"), y = 1.9, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2019 %>%
+  select(Date, 'Day from AI', USpG) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(USpG) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> USPG_2019
+
+
+ggplot(USPG_2019, aes(x = Date, y = USpG)) +
+  geom_line(color = "pink") +
+  annotate("segment", x = as.Date("2019-03-15"), xend = as.Date("2019-06-12"), y = 1, yend = 1, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2019-06-25"), xend = as.Date("2019-09-01"), y = 1, yend = 1, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2019 USpG vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2019-03-27"), xend = as.Date("2019-03-27"), y = 1.025, yend = 1.03, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2019-03-27"), y = 1.032, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2020 %>%
+  select(Date, 'Day from AI', `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(`Creatinine: crt(mg/mL)`) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> crt_est2020
+
+
+ggplot(crt_est2020, aes(x = Date, y = `Creatinine: crt(mg/mL)`)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2020-03-09"), xend = as.Date("2020-06-08"), y = 0, yend = 0, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2020-06-21"), xend = as.Date("2020-08-21"), y = 0, yend = 0, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2020 Creatinine vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2020-03-21"), xend = as.Date("2020-03-21"), y = 0.8, yend = 1.2, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2020-03-21"), y = 1.3, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+```{r}
+panda2020 %>%
+  select(Date, 'Day from AI', USpG) %>%
+  mutate(AnimalID = "MX1") %>%
+  drop_na(USpG) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  mutate(Date = as.Date(Date)) -> USPG_2020
+
+
+ggplot(USPG_2020, aes(x = Date, y = USpG)) +
+  geom_line(color = "Red") +
+  annotate("segment", x = as.Date("2020-03-09"), xend = as.Date("2020-06-08"), y = 1, yend = 1, colour = "green", size=2, alpha=0.6) +
+  annotate("segment", x = as.Date("2020-06-21"), xend = as.Date("2020-08-21"), y = 1, yend = 1, colour = "blue", size=2, alpha=0.6) +
+  labs(title = "2020 USpG vs Estrogens(Follicular Phase & Luteal phase)", caption = "Green line represents the Primary phase, Blue line represents the Secondary Phase") +
+  annotate("segment", x = as.Date("2020-03-21"), xend = as.Date("2020-03-21"), y = 1.0125, yend = 1.0172, colour = "black", size=0.5, alpha=0.5, arrow = arrow()) +
+  annotate("text", x = as.Date("2020-03-21"), y = 1.0175, label = "Date of peak(Estrogen)") +
+  theme_bw()
+```
+
+
+
+## transfer form for hormlong
+```{r}
+panda2013 %>%
+  select(Date, 'Day from AI', `Urinary progestagens (ng/mg Cr)`, `Urinary progestagens (ng/mL UspG)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2013_horm
+```
+
+
+```{r}
+panda2013 %>%
+  select(Date, 'Day from AI', USpG, `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2013_USP_CRT
+```
+
+
+
+
+
+```{r}
+panda2015 %>%
+  select(Date, 'Day from AI', `Urinary progestagens (ng/mg Cr)`, `Urinary progestagens (ng/mL UspG)`) %>%
+  mutate(AnimalID = "MX2015") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2015_horm
+```
+
+
+```{r}
+panda2015 %>%
+  select(Date, 'Day from AI', USpG, `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2015_USP_CRT
+```
+
+
+
+```{r}
+panda2018 %>%
+  select(Date, 'Day from AI', `Urinary progestagens (ng/mg Cr)`, `Urinary progestagens (ng/mL UspG)`) %>%
+  mutate(AnimalID = "MX2015") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2018_horm
+```
+
+
+```{r}
+panda2018 %>%
+  select(Date, 'Day from AI', USpG, `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2018_USP_CRT
+```
+
+
+
+```{r}
+panda2019 %>%
+  select(Date, 'Day from AI', `Urinary progestagens (ng/mg Cr)`, `Urinary progestagens (ng/mL UspG)`) %>%
+  mutate(AnimalID = "MX2015") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2019_horm
+```
+
+```{r}
+panda2019 %>%
+  select(Date, 'Day from AI', USpG, `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2019_USP_CRT
+```
+
+
+```{r}
+panda2020 %>%
+  select(Date, 'Day from AI', `Urinary progestagens (ng/mg Cr)`, `Urinary progestagens (ng/mL UspG)`) %>%
+  mutate(AnimalID = "MX2015") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2020_horm
+```
+
+```{r}
+panda2020 %>%
+  select(Date, 'Day from AI', USpG, `Creatinine: crt(mg/mL)`) %>%
+  mutate(AnimalID = "MX1") %>%
+  gather(key = "Hormone", value = "Conc_ngg", 3:4) %>%
+  drop_na(Conc_ngg) %>%
+  mutate(Event = str_detect(`Day from AI`, "^0")) %>%
+  mutate(Event = str_replace_all(Event, "TRUE", "AI")) %>%
+  mutate(Event = str_replace_all(Event, "FALSE", "")) %>%
+  select(-`Day from AI`) %>%
+  mutate(Date = format(Date, "%m-%d-%Y")) -> panda2020_USP_CRT
+```
+
+
+
+#### write csv
+
+```{r}
+write.csv(panda2013_horm, file = "C:/Users/adam0/Documents/panda_project/pan2013.csv")
+```
+
+```{r}
+write.csv(panda2013_USP_CRT, file = "C:/Users/adam0/Documents/panda_project/panda2013_us.csv")
+```
+
+
+
+```{r}
+write.csv(panda2015_horm, file = "C:/Users/adam0/Documents/panda_project/pan2015.csv")
+```
+
+```{r}
+write.csv(panda2015_USP_CRT, file = "C:/Users/adam0/Documents/panda_project/panda2015_us.csv")
+```
+
+
+
+```{r}
+write.csv(panda2018_horm, file = "C:/Users/adam0/Documents/panda_project/pan2018.csv")
+```
+
+```{r}
+write.csv(panda2018_USP_CRT, file = "C:/Users/adam0/Documents/panda_project/panda2018_us.csv")
+```
+
+
+
+```{r}
+write.csv(panda2019_horm, file = "C:/Users/adam0/Documents/panda_project/pan2019.csv")
+```
+
+```{r}
+write.csv(panda2019_USP_CRT, file = "C:/Users/adam0/Documents/panda_project/panda2019_us.csv")
+```
+
+
+
+```{r}
+write.csv(panda2020_horm, file = "C:/Users/adam0/Documents/panda_project/pan2020.csv")
+```
+
+```{r}
+write.csv(panda2020_USP_CRT, file = "C:/Users/adam0/Documents/panda_project/panda2020_us.csv")
+```
+
+
+
+
+
+
+#### ----------------
+```{r}
+data <- hormRead()
+
+```
+
+```{r}
+data2015 <- hormRead()
+```
+
+
+```{r}
+data2018 <- hormRead()
+```
+
+```{r}
+data2019 <- hormRead()
+```
+
+```{r}
+data2020 <- hormRead()
+```
+
+
+#### date transform
+
+```{r}
+data <- hormDate(data = data, date_var = 'Date', name = 'datetime', date_order = 'mdy')
+```
+
+```{r}
+data2015 <- hormDate(data = data2015, date_var = 'Date', name = 'datetime', date_order = 'mdy')
+```
+
+```{r}
+data2018 <- hormDate(data = data2018, date_var = 'Date', name = 'datetime', date_order = 'mdy')
+```
+
+```{r}
+data2019 <- hormDate(data = data2019, date_var = 'Date', name = 'datetime', date_order = 'mdy')
+```
+
+```{r}
+data2020 <- hormDate(data = data2020, date_var = 'Date', name = 'datetime', date_order = 'mdy')
+```
+
+```{r}
+
+```
+
+
+
+#### baseline
+```{r}
+base <- hormBaseline(data = data, by_var = 'Hormone', conc_var = 'Conc_ngg', time_var = 'datetime', criteria = 2, event_var = 'Event', save_data = FALSE)
+```
+
+
+```{r}
+base2015 <- hormBaseline(data = data2015, by_var = 'Hormone', conc_var = 'Conc_ngg', time_var = 'datetime', criteria = 2, event_var = 'Event', save_data = FALSE)
+```
+
+```{r}
+base2018 <- hormBaseline(data = data2018, by_var = 'Hormone', conc_var = 'Conc_ngg', time_var = 'datetime', criteria = 2, event_var = 'Event', save_data = FALSE)
+```
+
+```{r}
+base2019 <- hormBaseline(data = data2019, by_var = 'Hormone', conc_var = 'Conc_ngg', time_var = 'datetime', criteria = 2, event_var = 'Event', save_data = FALSE)
+```
+
+```{r}
+base2020 <- hormBaseline(data = data2020, by_var = 'Hormone', conc_var = 'Conc_ngg', time_var = 'datetime', criteria = 2, event_var = 'Event', save_data = FALSE)
+```
+
+
+#### 2013 plot
+```{r}
+hormPlot(x = base, date_format = '%b-%d', color = 'blue', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = 'BRPlots_1', save_plot = TRUE)
+```
+
+
+```{r}
+hormPlot(x = base, date_format = '%b-%d', color = 'blue', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = '2013USP_CRT_PLOT_2', save_plot = TRUE)
+```
+
+
+
+```{r}
+hormPlot(x = base, date_format = '%b-%d', color = 'black', symbol = 19, break_cutoff = 21, xscale = 'free', yscale = 'free', plot_per_page = 3, plot_height = 3, plot_width = 5, filename = 'BRPlots_2', save_plot = TRUE)
+
+```
+
+```{r}
+hormPlotBreaks(x = base, break_cutoff = 30, break_buffer = 60, color = 'black', symbol = 19, date_format = '%b-%d', plot_per_page = 3, plot_height = 3, plot_width = 5, save_plot = TRUE)
+
+```
+
+
+```{r}
+hormSumTable(x = base)
+```
+
+```{r}
+hormBoxplot(data = data, conc_var = 'Conc_ngg', id_var = 'AnimalID', by_var = 'Hormone')
+```
+
+
+#### 2015plot
+```{r}
+hormPlot(x = base2015, date_format = '%b-%d', color = 'green', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = 'BRPlots_1', save_plot = TRUE)
+```
+```{r}
+hormPlot(x = base2015, date_format = '%b-%d', color = 'green', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = '2015CRT_USPG_PLOT', save_plot = TRUE)
+```
+
+
+```{r}
+hormPlotBreaks(x = base2015, break_cutoff = 30, break_buffer = 60, color = 'green', symbol = 19, date_format = '%b-%d', plot_per_page = 3, plot_height = 3, plot_width = 5, save_plot = TRUE)
+```
+
+```{r}
+hormSumTable(x = base2015)
+hormBoxplot(data = data2015, conc_var = 'Conc_ngg', id_var = 'AnimalID', by_var = 'Hormone')
+```
+
+#### 2018plot
+```{r}
+hormPlot(x = base2018, date_format = '%b-%d', color = 'grey', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = 'BRPlots_1', save_plot = TRUE)
+```
+```{r}
+hormPlot(x = base2018, date_format = '%b-%d', color = 'green', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = '2018CRT_USPG_PLOT', save_plot = TRUE)
+```
+
+
+
+#### 2019plot
+```{r}
+hormPlot(x = base2019, date_format = '%b-%d', color = 'red', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = 'BRPlots2019', save_plot = TRUE)
+```
+
+```{r}
+hormPlot(x = base2019, date_format = '%b-%d', color = 'red', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = '2019CRT_USPG_PLOT', save_plot = TRUE)
+```
+
+
+
+#### 2020plot
+```{r}
+hormPlot(x = base2020, date_format = '%b-%d', color = 'yellow', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = 'BRPlots2020', save_plot = TRUE)
+```
+
+```{r}
+hormPlot(x = base2020, date_format = '%b-%d', color = 'red', symbol = 19, xscale = 'free', yscale = 'free', plot_per_page = 2, plot_height = 4, plot_width = 6, filename = '2020CRT_USPG_PLOT', save_plot = TRUE)
+```
+
+
