@@ -221,11 +221,95 @@ panda2019 <- tidy_panda(panda2019)
 panda2020 <- tidy_panda(panda2020)
 ```
 
+```{r}
+panda2013 %>%
+  mutate(Cub = "1") -> panda2013
+
+panda2015 %>%
+  mutate(Cub = "1") -> panda2015
+
+panda2018 %>%
+  mutate(Cub = "0") -> panda2018
+
+panda2019 %>%
+  mutate(Cub = "0") -> panda2019
+
+panda2020 %>%
+  mutate(Cub = "1") -> panda2020
+```
+
+
+
 ## Combine every datasets
 ```{r}
 all.Panda <- do.call("rbind", list(panda2013, panda2015, panda2018, panda2019, panda2020))
 all.Panda
 ```
+
+```{r}
+all.Panda %>%
+  select(USpG, 'Creatinine: crt(mg/mL)', 'Progestagens: Pg (pg/mL)', 'Urinary progestagens (ng/mg Cr)', 
+         'Urinary progestagens (ng/mL UspG)', 'Estrogens: E1S (pg/mL)', 'Urinary estrogens (ng/mg Cr)', 
+         'urinary estrogens (ng/mL UspG)', Cub) %>%
+  drop_na() -> all.panda
+```
+
+
+## ML Approach
+```{r}
+training <- sample(1:nrow(all.panda), 0.7*nrow(all.panda))
+
+x.training <- all.panda[training, -9]
+x.training.results <- all.panda[training, 9] > 0.5
+
+y.test <- all.panda[-training, -9]
+y.test.results <- all.panda[-training, 9] > 0.5
+```
+
+
+```{r}
+library(class)
+```
+
+
+```{r}
+panda.knn <- knn(x.training, y.test, x.training.results, k=11)
+
+table(y.test.results, panda.knn)
+mean(y.test.results == panda.knn )
+```
+```{r}
+best.k <- -1
+error.rate <- -1
+best.error.rate <- 99999999
+for (i in 1:20) {
+  panda.knn <- knn(x.training, y.test, x.training.results, k=i)
+  error.rate <- 1-(sum(panda.knn == y.test.results) / length(y.test.results))
+  if (error.rate < best.error.rate) {
+    best.k <- i
+    best.error.rate <- error.rate
+  }
+}
+print(paste("The optimal value of k is",best.k,"with an overall error rate of",best.error.rate))
+```
+```{r}
+all.panda%>%
+  mutate(Cub = as.numeric(Cub)) -> all.panda
+```
+
+
+```{r}
+panda_lgr <- glm(Cub ~ ., family=binomial(link='logit'), data = all.panda[training,])
+summary(panda_lgr)
+```
+
+```{r}
+panda.test.probabilities <- predict(panda_lgr, y.test, type = "response")
+panda.lr.classifications <- round(panda.test.probabilities, 0)
+sum(panda.lr.classifications == y.test.results) / length(y.test.results)
+```
+
+-------------------------------
 
 ```{r}
 all.Panda %>%
